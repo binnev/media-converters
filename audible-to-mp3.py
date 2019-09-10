@@ -4,7 +4,7 @@ useful inspo: https://stackoverflow.com/questions/30305953/is-there-an-elegant-w
 TODO:
     [x] Take activation_bytes out of the script; add an input for that
     [ ] add to Github and write a readme.
-    [ ] if the script receives a directory instead of a file; glob for .aac files in that dir. 
+    [x] if the script receives a directory instead of a file; glob for .aac files in that dir. 
     [ ] add option to create destination folder for output files. 
     [x] make split by chapters true by default. 
     [x] let the script show help if -i flag not passed. 
