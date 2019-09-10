@@ -5,14 +5,15 @@ TODO:
     [x] Take activation_bytes out of the script; add an input for that
     [ ] add to Github and write a readme.
     [x] if the script receives a directory instead of a file; glob for .aac files in that dir. 
-    [ ] add option to create destination folder for output files. 
+    [x] add option to create destination folder for output files. 
     [x] make split by chapters true by default. 
     [x] let the script show help if -i flag not passed. 
     [ ] suppress ffmpeg output -- or make an option to show it? 
     [x] write a function for checking mandatory flags; or if a flag is passed
+    [ ] merge the convert_chapters and convert functions. Add optional bit for chapters
 """
 
-import subprocess as sp, json, sys, getopt, glob
+import subprocess as sp, json, sys, getopt, glob, os
 from pathlib import Path
 
 def parse_chapters(file, verbose):
@@ -72,11 +73,24 @@ def handle_file_overwrite(file, cmd, overwrite):
             raise Exception("File already exists and you didn't want to overwrite."
                             " Exiting.")
 
-def convert_chapters(file, extension, overwrite, verbose, activation_bytes):
+def convert_chapters(file, extension, overwrite, verbose, activation_bytes,
+    create_destination_folder):
     chapters = parse_chapters(file, verbose)  # get chapter data
     for ii, chapter in enumerate(chapters):
         if verbose: print(f"converting chapter {ii} of {len(chapters)}")
-        out_file = chapter["out_file"].as_posix()+extension
+
+        if create_destination_folder:
+            base_dir = chapter["out_file"].parent    # directory containing aac files
+            destination_folder = base_dir/file.stem  # destination folder named after aac file
+            chapter_name = chapter["out_file"].stem  # numbered chapter output filename
+            # assemble the path to the output file; including the destination folder
+            out_file = (destination_folder/chapter_name).as_posix()+extension 
+            # create the folder if it doesn't already exist
+            if not destination_folder.is_dir():
+                os.mkdir(destination_folder.as_posix())
+        else:
+            out_file = chapter["out_file"].as_posix()+extension
+    
         cmd = ["ffmpeg",
                "-activation_bytes", activation_bytes,
                "-i", chapter["orig_file"].as_posix(),
@@ -96,9 +110,19 @@ def convert_chapters(file, extension, overwrite, verbose, activation_bytes):
             raise Exception("command {} encountered an "
                             "error code {}:\n{}".format(e.cmd, e.returncode, e.output))
 
-def convert(file, extension, overwrite, verbose, activation_bytes):
+def convert(file, extension, overwrite, verbose, activation_bytes, create_destination_folder):
     if verbose: print("converting file", file)
-    out_file = file.parent / (file.stem+extension)  #  construct output file
+
+    if create_destination_folder:
+        destination_folder = file.parent/file.stem
+        # assemble the path to the output file; including the destination folder
+        out_file = destination_folder / (file.stem+extension) 
+        # create the folder if it doesn't already exist
+        if not destination_folder.is_dir():
+            os.mkdir(destination_folder.as_posix())
+    else:
+        out_file = file.parent / (file.stem+extension)  #  construct output file
+    
     # build ffmpeg command
     cmd = ["ffmpeg",
            "-activation_bytes", activation_bytes,
@@ -130,7 +154,8 @@ def main(argv):
 
     # define expected arguments
     shorts = "shi:a:e:vy"  # colon means parameter required after flag
-    longs = ["split-chapters", "help", "input-file=", "activation-bytes=", "extension=", "verbose"]
+    longs = ["split-chapters", "help", "input-file=", "activation-bytes=", 
+             "extension=", "verbose", "create-destination-folder"]
     helptext = """USAGE:
         -h, --help
             Show this help text.
@@ -151,6 +176,10 @@ def main(argv):
         -s, --split-chapters
             Try to split the audio into chapters based on metadata
             obtained using ffprobe. Default is False.
+
+        --create-destination-folder
+            Create a folder (named after the input AAX file) and 
+            put output files in there. 
 
         -v, --verbose
             Print verbose information.
@@ -178,10 +207,11 @@ def main(argv):
         enforce_required_flag(*flag, opts)
 
     # default values
-    split_chapters = True
+    split_chapters = False
     extension = ".mp4"
     verbose = False
     overwrite = False
+    create_destination_folder = False
 
     # parse flags
     for opt, arg in optargs:
@@ -198,6 +228,8 @@ def main(argv):
             overwrite = True
         elif opt in ("-a", "--activation-bytes"):
             activation_bytes = arg
+        elif opt in ("--create-destination-folder"):
+            create_destination_folder = True
 
     if verbose: print("opts:", opts)
     if verbose: print("args:", args)
@@ -217,10 +249,12 @@ def main(argv):
         print(f"I'm going to try and deal with file {file}")
         if split_chapters:
             if verbose: print("Splitting chapters...")
-            convert_chapters(file, extension, overwrite, verbose, activation_bytes)
+            convert_chapters(file, extension, overwrite, verbose, 
+                             activation_bytes, create_destination_folder)
         else:
             if verbose: print("Converting file...")
-            convert(file, extension, overwrite, verbose, activation_bytes)
+            convert(file, extension, overwrite, verbose, 
+                    activation_bytes, create_destination_folder)
 
 
 if __name__ == "__main__":
