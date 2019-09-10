@@ -2,14 +2,14 @@
 useful inspo: https://stackoverflow.com/questions/30305953/is-there-an-elegant-way-to-split-a-file-by-chapter-using-ffmpeg
 
 TODO:
-    [ ] Take activation_bytes out of the script; add an input for that
+    [x] Take activation_bytes out of the script; add an input for that
     [ ] add to Github and write a readme.
     [ ] if the script receives a directory instead of a file; glob for .aac files in that dir. 
     [ ] add option to create destination folder for output files. 
-    [ ] make split by chapters true by default. 
-    [ ] let the script show help if -i flag not passed. 
-    [ ] suppress ffmpeg output and show progress somehow -- chapter x of xx
-    [ ] write a function for checking mandatory flags
+    [x] make split by chapters true by default. 
+    [x] let the script show help if -i flag not passed. 
+    [ ] suppress ffmpeg output -- or make an option to show it? 
+    [x] write a function for checking mandatory flags; or if a flag is passed
 """
 
 import subprocess as sp, json, sys, getopt
@@ -117,6 +117,15 @@ def convert(file, extension, overwrite, verbose, activation_bytes):
         raise Exception("command {} encountered an "
                         "error code {}:\n{}".format(e.cmd, e.returncode, e.output))
 
+
+def check_flag_passed(short, long, flags_passed):
+    return (short in flags_passed) or (long in flags_passed)
+
+def enforce_required_flag(short, long, description, flags_passed):
+    if not check_flag_passed(short, long, flags_passed):
+        print(f"The {description} ('{short}' or '{long}') is required!")
+        sys.exit(2)
+
 def main(argv):
 
     # define expected arguments
@@ -158,19 +167,15 @@ def main(argv):
         sys.exit(2)             # and exit with an error
 
     # if the user passed the help flag, show the help and exit 
-    if opt in ('-h', "--help"):
+    if check_flag_passed("-h", "--help", opts):
         print(helptext)
         sys.exit()  # don't do any other actions if help flag is passed. 
 
-    # make sure user passes input file flag
-    if ("-i" not in opts) and ("--input-file" not in opts):
-        print("The input file flag ('-i' or '--input-file') is required!")
-        sys.exit(2)
-
-    # make sure user passes activation bytes
-    if ("-a" not in opts) and ("--activation-bytes" not in opts):
-        print("The activation-bytes flag ('-a' or '--activation-bytes') is required!")
-        sys.exit(2)
+    # enforce required flags
+    required = [("-i", "--input-file", "input file flag"),
+                ("-a", "--activation-bytes", "activation-bytes flag")]
+    for flag in required:
+        enforce_required_flag(*flag, opts)
 
     # default values
     split_chapters = True
