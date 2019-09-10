@@ -12,7 +12,7 @@ TODO:
     [x] write a function for checking mandatory flags; or if a flag is passed
 """
 
-import subprocess as sp, json, sys, getopt
+import subprocess as sp, json, sys, getopt, glob
 from pathlib import Path
 
 def parse_chapters(file, verbose):
@@ -187,7 +187,7 @@ def main(argv):
     for opt, arg in optargs:
         
         if opt in ("-i", "--input-file"):
-            file = arg
+            path = arg
         elif opt in ("-e", "--extension"):
             extension = arg
         elif opt in ("-s", "--split-chapters"):
@@ -202,16 +202,25 @@ def main(argv):
     if verbose: print("opts:", opts)
     if verbose: print("args:", args)
 
-    # housekeeping
-    file = Path(file)                           # convert to Path object
-    extension = "."+extension.replace(".", "")  # make sure there is exactly one dot
+    # check if path points to a file or directory.
+    path = Path(path)
+    if path.is_dir():  # if it is a directory, search for .aax files 
+        files = glob.glob((path/"*.aax").as_posix())
+    else:  # if it is a file, convert that file. 
+        files = [path]
 
-    if split_chapters:
-        if verbose: print("Splitting chapters...")
-        convert_chapters(file, extension, overwrite, verbose, activation_bytes)
-    else:
-        if verbose: print("Converting file...")
-        convert(file, extension, overwrite, verbose, activation_bytes)
+    # make sure there is exactly one dot in the extension
+    extension = "."+extension.replace(".", "")  
+
+    for file in files:
+        file = Path(file)
+        print(f"I'm going to try and deal with file {file}")
+        if split_chapters:
+            if verbose: print("Splitting chapters...")
+            convert_chapters(file, extension, overwrite, verbose, activation_bytes)
+        else:
+            if verbose: print("Converting file...")
+            convert(file, extension, overwrite, verbose, activation_bytes)
 
 
 if __name__ == "__main__":
