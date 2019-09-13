@@ -3,7 +3,7 @@ useful: https://stackoverflow.com/questions/30305953/is-there-an-elegant-way-to-
 
 TODO:
     [x] Take activation_bytes out of the script; add an input for that
-    [ ] add to Github and write a readme.
+    [x] add to Github and write a readme.
     [x] if the script receives a directory instead of a file; glob for .aac files in that dir. 
     [x] add option to create destination folder for output files. 
     [x] let the script show help if -i flag not passed. 
