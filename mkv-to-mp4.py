@@ -1,4 +1,4 @@
-import glob, ffmpy, sys, subprocess as sp
+import glob, sys, subprocess as sp
 from pathlib import Path 
 
 def main(path):
