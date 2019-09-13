@@ -6,11 +6,11 @@ TODO:
     [ ] add to Github and write a readme.
     [x] if the script receives a directory instead of a file; glob for .aac files in that dir. 
     [x] add option to create destination folder for output files. 
-    [x] make split by chapters true by default. 
     [x] let the script show help if -i flag not passed. 
     [ ] suppress ffmpeg output -- or make an option to show it? 
     [x] write a function for checking mandatory flags; or if a flag is passed
     [ ] merge the convert_chapters and convert functions. Add optional bit for chapters
+    [x] make a function for printing helptext
 """
 
 import subprocess as sp, json, sys, getopt, glob, os
@@ -35,7 +35,7 @@ def parse_chapters(file, verbose):
     for token in ("\\n", " ", "b\'", "\'"):  # remove newlines, whitespace, single quotes
         output = str(output).replace(token, "")
 
-    output = json.loads(output)  # convert json to dict
+    output = json.loads(output)  # load json string into dict
 
     chapters = output.get("chapters")  # get chapters. Will return None if not present
     # if "chapters" isn't in the output but there was no error in the ffprobe cmd,
@@ -150,12 +150,7 @@ def enforce_required_flag(short, long, description, flags_passed):
         print(f"The {description} ('{short}' or '{long}') is required!")
         sys.exit(2)
 
-def main(argv):
-
-    # define expected arguments
-    shorts = "shi:a:e:vy"  # colon means parameter required after flag
-    longs = ["split-chapters", "help", "input-file=", "activation-bytes=", 
-             "extension=", "verbose", "create-destination-folder"]
+def print_helptext():
     helptext = """USAGE:
         -h, --help
             Show this help text.
@@ -187,17 +182,26 @@ def main(argv):
         -y
             Force overwrite output files.
             """
+    print(helptext)
+
+def main(argv):
+
+    # define expected arguments
+    shorts = "shi:a:e:vy"  # colon means parameter required after flag
+    longs = ["split-chapters", "help", "input-file=", "activation-bytes=", 
+             "extension=", "verbose", "create-destination-folder"]
+
     try:
         optargs, _ = getopt.getopt(argv, shorts, longs)
         opts = tuple(opt for opt, arg in optargs)
         args = tuple(arg for opt, arg in optargs)
     except getopt.GetoptError:  # if the user passed unrecognised flags
-        print(helptext)         # print the help text
+        print_helptext()        # print the help text
         sys.exit(2)             # and exit with an error
 
     # if the user passed the help flag, show the help and exit 
     if check_flag_passed("-h", "--help", opts):
-        print(helptext)
+        print_helptext()
         sys.exit()  # don't do any other actions if help flag is passed. 
 
     # enforce required flags
